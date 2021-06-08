@@ -1,0 +1,99 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: es-hw
+spec:
+  version: 7.13.1
+  nodeSets:
+  - name: master-nodes
+    count: 3
+    podTemplate:
+      spec:
+        initContainers:
+        - name: sysctl
+          securityContext:
+            privileged: true
+          command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+    config:
+      node.roles: ["master"]
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: standard
+  - name: data-nodes-hot
+    count: 3
+    podTemplate:
+      spec:
+        initContainers:
+        - name: sysctl
+          securityContext:
+            privileged: true
+          command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+    config:
+      node.roles: ["data"]
+      node.attr.data: hot
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: standard
+  - name: data-nodes-warm
+    count: 3
+    podTemplate:
+      spec:
+        initContainers:
+        - name: sysctl
+          securityContext:
+            privileged: true
+          command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+    config:
+      node.roles: ["data"]
+      node.attr.data: warm
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: standard
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: es-hw-hot-nodes
+spec:
+  ports:
+    - name: http
+      port: 9200
+      targetPort: 9200
+  selector:
+    elasticsearch.k8s.elastic.co/cluster-name: "es-hw"
+    elasticsearch.k8s.elastic.co/node-data-nodes-hot: "true"
+---
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana-hot-warm
+spec:
+  version: 7.13.1
+  http:
+    service:
+      spec:
+        type: LoadBalancer
+  count: 1
+  elasticsearchRef:
+    name: es-hw
