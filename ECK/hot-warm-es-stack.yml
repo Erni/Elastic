@@ -57,6 +57,9 @@ spec:
           securityContext:
             privileged: true
           command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+      metadata:
+        labels:
+          es.erni.elasticsearch/tier: "warm"
     config:
       node.roles: ["data"]
       node.attr.data: warm
@@ -82,7 +85,7 @@ spec:
       targetPort: 9200
   selector:
     elasticsearch.k8s.elastic.co/cluster-name: "es-hw"
-    elasticsearch.k8s.elastic.co/node-data-nodes-hot: "true"
+    es.erni.elasticsearch/tier: "warm"
 ---
 apiVersion: kibana.k8s.elastic.co/v1
 kind: Kibana
